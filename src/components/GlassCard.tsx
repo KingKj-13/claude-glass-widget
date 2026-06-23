@@ -21,9 +21,12 @@ export function GlassCard({ children }: GlassCardProps) {
   const transparency = useSettings((s) => s.transparency);
   const setHovering = useUI((s) => s.setHovering);
 
-  // transparency 0.4 (more solid) .. 1 (pure glass)
+  // transparency 0.3 (more solid) .. 1 (more glassy)
   const t = clamp(transparency, 0.3, 1);
-  const darkAlpha = (1 - t) * 0.6 + 0.06; // 0.3 -> 0.48, 1 -> 0.06
+  // A high floor keeps the HUD readable over ANY background. CSS backdrop-filter
+  // cannot blur the actual desktop/other apps behind a transparent OS window, so
+  // legibility comes from this dark tint, not from blurring what's behind.
+  const darkAlpha = (1 - t) * 0.4 + 0.68; // 0.3 -> 0.96, 0.6 -> 0.84, 1 -> 0.68
 
   return (
     <motion.div

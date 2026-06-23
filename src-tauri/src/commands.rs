@@ -30,16 +30,6 @@ pub fn set_always_on_top<R: Runtime>(
     window.set_always_on_top(value).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
-pub fn set_click_through<R: Runtime>(
-    window: WebviewWindow<R>,
-    value: bool,
-) -> Result<(), String> {
-    window
-        .set_ignore_cursor_events(value)
-        .map_err(|e| e.to_string())
-}
-
 /// Resize the widget while keeping its top-right corner anchored, so expanding
 /// grows the card down-and-left (matching the floating-HUD feel).
 #[tauri::command]

@@ -86,7 +86,9 @@ pub fn build_snapshot() -> Result<Value, String> {
         .unwrap_or_else(|| json!({}));
 
     let used_today = f(&today_row, &["totalTokens"]);
-    let available_today = limits.daily_tokens.max(used_today);
+    // "Available" is the configured daily limit (set CLAUDE_DAILY_TOKEN_LIMIT to
+    // match your plan). Remaining is clamped at 0 so heavy days never go negative.
+    let available_today = limits.daily_tokens;
     let remaining_today = (available_today - used_today).max(0.0);
 
     let (sonnet_tokens, opus_tokens) = model_split(&today_row);

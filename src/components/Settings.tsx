@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Close, Pin, Ghost, Power, Bolt, Refresh } from "./icons";
+import { Close, Pin, Power, Bolt, Refresh } from "./icons";
 import { useUI } from "@/store/uiStore";
 import { useSettings, DEFAULT_SETTINGS } from "@/store/settingsStore";
 import { cn } from "@/lib/utils";
@@ -46,13 +46,6 @@ export function Settings() {
                 desc="Keep the widget above all windows"
                 checked={s.alwaysOnTop}
                 onChange={(v) => s.set("alwaysOnTop", v)}
-              />
-              <Toggle
-                icon={<Ghost size={15} />}
-                title="Click Through Mode"
-                desc="Let clicks pass through to apps behind"
-                checked={s.clickThrough}
-                onChange={(v) => s.set("clickThrough", v)}
               />
               <Toggle
                 icon={<Power size={15} />}

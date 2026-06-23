@@ -3,7 +3,13 @@ import type { ModelUsage } from "@/types/usage";
 import { ProgressBar } from "./ProgressBar";
 import { SectionLabel } from "./SectionLabel";
 import { StatusIndicator } from "./StatusIndicator";
-import { formatCompact, ratio, statusFromRatio } from "@/lib/utils";
+import {
+  formatCompact,
+  formatPct,
+  ratio,
+  statusFromRatio,
+  STATUS_META,
+} from "@/lib/utils";
 
 interface UsageSectionProps {
   models: ModelUsage[];
@@ -46,7 +52,17 @@ function ModelRow({ model, index }: { model: ModelUsage; index: number }) {
           {formatCompact(model.requestsLimit)} Requests Used
         </span>
       </div>
-      <ProgressBar value={r} />
+      <div className="flex items-center gap-2.5">
+        <div className="flex-1">
+          <ProgressBar value={r} />
+        </div>
+        <span
+          className="w-9 text-right text-[11px] font-bold tabular-nums"
+          style={{ color: STATUS_META[status].color }}
+        >
+          {formatPct(r)}
+        </span>
+      </div>
     </motion.div>
   );
 }

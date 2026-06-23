@@ -45,10 +45,6 @@ export async function setAlwaysOnTop(value: boolean): Promise<void> {
   await invoke("set_always_on_top", { value });
 }
 
-export async function setClickThrough(value: boolean): Promise<void> {
-  await invoke("set_click_through", { value });
-}
-
 export async function setWidgetSize(
   width: number,
   height: number,
@@ -68,6 +64,21 @@ export async function hideWindow(): Promise<void> {
 /** Minimize the HUD to the system tray (no taskbar entry exists). */
 export async function minimizeToTray(): Promise<void> {
   await invoke("hide_window");
+}
+
+/**
+ * Begin an OS-driven window move. Called on mousedown over the header so the
+ * whole top bar reliably drags the widget (more robust than relying solely on
+ * the `data-tauri-drag-region` attribute). No-op outside Tauri.
+ */
+export async function startDrag(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    await getCurrentWindow().startDragging();
+  } catch (err) {
+    console.warn("[tauri] startDrag failed:", err);
+  }
 }
 
 /** Edge/corner identifiers accepted by Tauri's interactive resize. */

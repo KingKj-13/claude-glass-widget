@@ -4,11 +4,9 @@ import { persist } from "zustand/middleware";
 export interface Settings {
   /** Keep the widget above all other windows. */
   alwaysOnTop: boolean;
-  /** Let mouse events pass through the widget to whatever is behind it. */
-  clickThrough: boolean;
   /** Launch the widget automatically when Windows starts. */
   launchOnStartup: boolean;
-  /** Glass opacity, 0.4 (very see-through) .. 1 (solid-ish). */
+  /** Glass opacity, 0.3 (more see-through) .. 1 (more solid). */
   transparency: number;
   /** How often to poll ccusage, in seconds. */
   refreshIntervalSec: number;
@@ -21,9 +19,8 @@ interface SettingsState extends Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   alwaysOnTop: true,
-  clickThrough: false,
   launchOnStartup: true,
-  transparency: 0.85,
+  transparency: 0.6,
   refreshIntervalSec: 60,
 };
 
@@ -36,7 +33,17 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: "claude-glass-settings",
-      version: 1,
+      version: 2,
+      // v1 shipped a too-transparent default + a click-through toggle. Reset the
+      // transparency to the new readable default and drop the removed key.
+      migrate: (state, version) => {
+        const s = (state as Partial<SettingsState> & { clickThrough?: boolean }) ?? {};
+        if (version < 2) {
+          s.transparency = DEFAULT_SETTINGS.transparency;
+          delete s.clickThrough;
+        }
+        return s as SettingsState;
+      },
     },
   ),
 );

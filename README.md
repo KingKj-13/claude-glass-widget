@@ -54,9 +54,9 @@ for anyone who installs it. No accounts, no sign-in, nothing leaves your compute
   big ambient shadow. Stays readable over wallpaper, browsers, VS Code or
   windowed games.
 - **Frameless · transparent · always-on-top · hidden from taskbar.**
-- **Draggable & resizable**, remembers its position between launches, snaps to
-  the top-right on first run.
-- **Click-through mode** so it can become a passive overlay.
+- **Draggable & resizable** — drag the header to move, drag a bottom-corner grip
+  to resize; remembers its position between launches, snaps to the top-right on
+  first run.
 - **Launch on startup** (Windows / macOS login item).
 - **Live data** from ccusage, auto-refreshed every minute (configurable) and
   cached between refreshes.
@@ -71,8 +71,8 @@ for anyone who installs it. No accounts, no sign-in, nothing leaves your compute
   Sessions and Resets breakdowns.
 - **System tray** — Show / Hide / Refresh / Settings / Quit, plus left-click to
   toggle.
-- **Settings** — Always on Top, Click-Through, Launch on Startup, Transparency,
-  Refresh Interval.
+- **Settings** — Always on Top, Launch on Startup, Transparency, Refresh
+  Interval.
 - **Mobile-sync ready** — a clean `UsageProvider` / `SyncProvider` abstraction
   so an Android app, Samsung Watch face or web dashboard can plug in later.
 
@@ -203,10 +203,8 @@ same data flows to an Android app, a Samsung Watch face, or a web dashboard with
 Open via the gear icon or the tray. All settings persist locally.
 
 - **Always On Top** — keep above every window.
-- **Click-Through Mode** — clicks pass through to apps behind (toggle back off
-  from the tray).
 - **Launch On Startup** — register/unregister the OS login item.
-- **Transparency Level** — 30%–100% glass opacity.
+- **Transparency Level** — 30%–100% glass opacity (higher = more see-through).
 - **Refresh Interval** — 15s–300s.
 
 ---

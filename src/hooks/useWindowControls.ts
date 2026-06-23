@@ -5,7 +5,6 @@ import {
   listen,
   setAlwaysOnTop,
   setAutostart,
-  setClickThrough,
   setWidgetSize,
 } from "@/lib/tauri";
 
@@ -19,7 +18,7 @@ export const EXPANDED_SIZE = { width: 650, height: 800 };
  * menu events (`open-settings`, `toggle-expand`).
  */
 export function useWindowControls(): void {
-  const { alwaysOnTop, clickThrough, launchOnStartup } = useSettings();
+  const { alwaysOnTop, launchOnStartup } = useSettings();
   const expanded = useUI((s) => s.expanded);
   const setExpanded = useUI((s) => s.setExpanded);
   const openSettings = useUI((s) => s.openSettings);
@@ -28,11 +27,6 @@ export function useWindowControls(): void {
   useEffect(() => {
     void setAlwaysOnTop(alwaysOnTop);
   }, [alwaysOnTop]);
-
-  // Click-through.
-  useEffect(() => {
-    void setClickThrough(clickThrough);
-  }, [clickThrough]);
 
   // Launch on startup.
   useEffect(() => {

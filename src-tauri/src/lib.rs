@@ -30,6 +30,10 @@ pub fn run() {
             tray::create_tray(&handle)?;
 
             if let Some(win) = app.get_webview_window("main") {
+                // Safety: always start interactive. (Click-through has been removed,
+                // but this guarantees the window can never launch unclickable.)
+                let _ = win.set_ignore_cursor_events(false);
+
                 // Restore the saved position, or place the HUD top-right on first run.
                 window::restore_or_place(&win);
 
@@ -52,7 +56,6 @@ pub fn run() {
             commands::get_usage,
             commands::ccusage_available,
             commands::set_always_on_top,
-            commands::set_click_through,
             commands::set_widget_size,
             commands::show_window,
             commands::hide_window,

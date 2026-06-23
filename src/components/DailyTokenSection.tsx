@@ -1,7 +1,7 @@
 import type { TokenStats } from "@/types/usage";
 import { SectionLabel } from "./SectionLabel";
 import { StatTile } from "./StatTile";
-import { formatFull } from "@/lib/utils";
+import { formatCompact } from "@/lib/utils";
 
 interface DailyTokenSectionProps {
   tokens: TokenStats;
@@ -15,16 +15,16 @@ export function DailyTokenSection({ tokens }: DailyTokenSectionProps) {
       <div className="grid grid-cols-3 gap-2">
         <StatTile
           label="Available"
-          value={formatFull(tokens.availableToday)}
+          value={formatCompact(tokens.availableToday)}
         />
         <StatTile
           label="Used"
-          value={formatFull(tokens.usedToday)}
+          value={formatCompact(tokens.usedToday)}
           accent="#f0a085"
         />
         <StatTile
           label="Remaining"
-          value={formatFull(tokens.remainingToday)}
+          value={formatCompact(tokens.remainingToday)}
           accent="#4ade80"
         />
       </div>
