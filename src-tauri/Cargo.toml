@@ -1,0 +1,34 @@
+[package]
+name = "claude-glass-widget"
+version = "1.0.0"
+description = "Premium floating glass desktop HUD for Claude AI usage"
+authors = ["Claude Glass Widget"]
+license = "MIT"
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+# The library is what `main.rs` calls into. Tauri's mobile targets require the
+# `cdylib`/`staticlib` crate types, so we expose all three.
+[lib]
+name = "claude_glass_widget_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["clock"] }
+
+# Smaller, faster release binaries (helps the <100MB / <2s startup goals).
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
