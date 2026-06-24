@@ -3,7 +3,7 @@ import { useUsage } from "@/store/usageStore";
 import { useUI } from "@/store/uiStore";
 import { useUsagePolling } from "@/hooks/useUsagePolling";
 import { useWindowControls } from "@/hooks/useWindowControls";
-import { aggregateStatus, ratio } from "@/lib/utils";
+import { ratio, statusFromRatio } from "@/lib/utils";
 
 import { GlassCard } from "@/components/GlassCard";
 import { Header } from "@/components/Header";
@@ -24,11 +24,10 @@ export default function App() {
   const snapshot = useUsage((s) => s.snapshot);
   const expanded = useUI((s) => s.expanded);
 
-  // Overall HUD status = worst of per-model request ratios + session ratio.
-  const level = aggregateStatus([
-    ...snapshot.models.map((m) => ratio(m.windowUsed, m.windowLimit)),
+  // Overall HUD status = how much of the active 5-hour window has been used.
+  const level = statusFromRatio(
     ratio(snapshot.session.usage, snapshot.session.limit),
-  ]);
+  );
 
   return (
     <GlassCard>
@@ -39,7 +38,10 @@ export default function App() {
           <NoData reason={snapshot.reason} />
         ) : (
           <div className="scroll-thin mt-4 flex-1 space-y-4 overflow-y-auto pr-0.5">
-            <UsageSection models={snapshot.models} />
+            <UsageSection
+              used={snapshot.session.usage}
+              limit={snapshot.session.limit}
+            />
             <ResetSection reset={snapshot.reset} />
             <DailyTokenSection tokens={snapshot.tokens} />
             <SessionSection session={snapshot.session} />

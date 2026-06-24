@@ -60,7 +60,8 @@ for anyone who installs it. No accounts, no sign-in, nothing leaves your compute
 - **Launch on startup** (Windows / macOS login item).
 - **Live data** from ccusage, auto-refreshed every minute (configurable) and
   cached between refreshes.
-- **Per-model progress** (Claude Sonnet / Claude Opus) with animated bars.
+- **Live usage bar** for the active 5-hour window (generated tokens, cache reads
+  excluded), with an animated percentage.
 - **Live reset countdown** updated every second, with an elapsed-window ring.
 - **Daily token budget** — Available / Used / Remaining.
 - **Current session** — usage / remaining.
@@ -156,7 +157,7 @@ ccusage doesn't expose your plan's real limits, so the budgets are configurable
 |----------|---------|---------|
 | `CLAUDE_DAILY_TOKEN_LIMIT` | `10000000` | "Available Today" ceiling |
 | `CLAUDE_SESSION_TOKEN_LIMIT` | `4000000` | total 5-hour window budget (session bar) |
-| `CLAUDE_WINDOW_TOKEN_LIMIT` | `2000000` | per-model 5-hour window budget (model bars) |
+| `CLAUDE_WINDOW_TOKEN_LIMIT` | `2000000` | per-model 5-hour window budget |
 | `CLAUDE_AVG_TOKENS_PER_REQUEST` | `1100` | estimates the request count in history tables |
 
 ---
