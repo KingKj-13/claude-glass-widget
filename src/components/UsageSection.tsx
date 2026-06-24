@@ -15,11 +15,11 @@ interface UsageSectionProps {
   models: ModelUsage[];
 }
 
-/** Per-model request progress (Claude Sonnet, Claude Opus). */
+/** Per-model usage within the active 5-hour window (Claude Sonnet, Claude Opus). */
 export function UsageSection({ models }: UsageSectionProps) {
   return (
     <section>
-      <SectionLabel>Model Usage</SectionLabel>
+      <SectionLabel>Model Usage · 5h Window</SectionLabel>
       <div className="flex flex-col gap-3">
         {models.map((m, i) => (
           <ModelRow key={m.modelId} model={m} index={i} />
@@ -30,7 +30,7 @@ export function UsageSection({ models }: UsageSectionProps) {
 }
 
 function ModelRow({ model, index }: { model: ModelUsage; index: number }) {
-  const r = ratio(model.requestsUsed, model.requestsLimit);
+  const r = ratio(model.windowUsed, model.windowLimit);
   const status = statusFromRatio(r);
 
   return (
@@ -47,9 +47,9 @@ function ModelRow({ model, index }: { model: ModelUsage; index: number }) {
           <StatusIndicator level={status} showLabel={false} />
         </div>
         <span className="text-[11px] font-medium tabular-nums text-white/60">
-          <span className="text-white">{formatCompact(model.requestsUsed)}</span>
+          <span className="text-white">{formatCompact(model.windowUsed)}</span>
           {" / "}
-          {formatCompact(model.requestsLimit)} Requests Used
+          {formatCompact(model.windowLimit)} Tokens
         </span>
       </div>
       <div className="flex items-center gap-2.5">

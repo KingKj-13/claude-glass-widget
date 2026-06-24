@@ -29,15 +29,17 @@ export class MockUsageProvider implements UsageProvider {
     // A gentle sine drift so the bars/charts visibly breathe over time.
     const drift = (Math.sin(now / 90000) + 1) / 2; // 0..1
 
-    const sonnetUsed = Math.round(4750 + drift * 220); // ~4.8K / 5K
-    const opusUsed = Math.round(190 + drift * 30); // ~201 / 500
-
     const availableToday = 10_000_000;
     const usedToday = Math.round(4_600_000 + drift * 400_000); // ~4.8M
     const remainingToday = availableToday - usedToday;
 
-    const sessionLimit = 10_000_000;
-    const sessionUsage = usedToday;
+    // Active 5h window (generated tokens, excl. cache reads).
+    const windowLimit = 2_000_000;
+    const sonnetWindow = Math.round(820_000 + drift * 180_000); // ~0.8–1M
+    const opusWindow = Math.round(240_000 + drift * 90_000); // ~0.24–0.33M
+
+    const sessionLimit = 4_000_000;
+    const sessionUsage = sonnetWindow + opusWindow;
     const sessionRemaining = sessionLimit - sessionUsage;
 
     return {
@@ -47,16 +49,16 @@ export class MockUsageProvider implements UsageProvider {
         {
           name: "Claude Sonnet",
           modelId: "claude-sonnet-4-6",
-          requestsUsed: sonnetUsed,
-          requestsLimit: 5000,
-          tokensUsed: Math.round(usedToday * 0.82),
+          windowUsed: sonnetWindow,
+          windowLimit,
+          tokensToday: Math.round(usedToday * 0.82),
         },
         {
           name: "Claude Opus",
           modelId: "claude-opus-4-8",
-          requestsUsed: opusUsed,
-          requestsLimit: 500,
-          tokensUsed: Math.round(usedToday * 0.18),
+          windowUsed: opusWindow,
+          windowLimit,
+          tokensToday: Math.round(usedToday * 0.18),
         },
       ],
       tokens: { availableToday, usedToday, remainingToday },

@@ -26,7 +26,7 @@ export default function App() {
 
   // Overall HUD status = worst of per-model request ratios + session ratio.
   const level = aggregateStatus([
-    ...snapshot.models.map((m) => ratio(m.requestsUsed, m.requestsLimit)),
+    ...snapshot.models.map((m) => ratio(m.windowUsed, m.windowLimit)),
     ratio(snapshot.session.usage, snapshot.session.limit),
   ]);
 

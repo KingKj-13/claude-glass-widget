@@ -17,9 +17,10 @@ const HOUR_MS: i64 = 60 * 60 * 1000;
 /// user on a different Claude plan can tune them without rebuilding.
 struct Limits {
     daily_tokens: f64,
+    /// Total generated-token budget for the current 5-hour window (session bar).
     session_tokens: f64,
-    sonnet_requests: f64,
-    opus_requests: f64,
+    /// Per-model generated-token budget for the current 5-hour window.
+    window_token_limit: f64,
     avg_tokens_per_request: f64,
 }
 
@@ -33,9 +34,8 @@ impl Limits {
         };
         Limits {
             daily_tokens: env_f("CLAUDE_DAILY_TOKEN_LIMIT", 10_000_000.0),
-            session_tokens: env_f("CLAUDE_SESSION_TOKEN_LIMIT", 10_000_000.0),
-            sonnet_requests: env_f("CLAUDE_SONNET_REQUEST_LIMIT", 5_000.0),
-            opus_requests: env_f("CLAUDE_OPUS_REQUEST_LIMIT", 500.0),
+            session_tokens: env_f("CLAUDE_SESSION_TOKEN_LIMIT", 4_000_000.0),
+            window_token_limit: env_f("CLAUDE_WINDOW_TOKEN_LIMIT", 2_000_000.0),
             avg_tokens_per_request: env_f("CLAUDE_AVG_TOKENS_PER_REQUEST", 1_100.0),
         }
     }
@@ -91,39 +91,62 @@ pub fn build_snapshot() -> Result<Value, String> {
     let available_today = limits.daily_tokens;
     let remaining_today = (available_today - used_today).max(0.0);
 
-    let (sonnet_tokens, opus_tokens) = model_split(&today_row);
-    let models = json!([
-        {
-            "name": "Claude Sonnet",
-            "modelId": "claude-sonnet-4-6",
-            "requestsUsed": estimate_requests(sonnet_tokens, &limits),
-            "requestsLimit": limits.sonnet_requests as i64,
-            "tokensUsed": sonnet_tokens as i64,
-        },
-        {
-            "name": "Claude Opus",
-            "modelId": "claude-opus-4-8",
-            "requestsUsed": estimate_requests(opus_tokens, &limits),
-            "requestsLimit": limits.opus_requests as i64,
-            "tokensUsed": opus_tokens as i64,
-        }
-    ]);
+    // Today's Claude split drives how we attribute the active window per model.
+    let (sonnet_today, opus_today) = model_split(&today_row);
 
-    // -------- active block -> session + reset --------
+    // -------- active 5-hour block -> session, reset & per-model window --------
     let active = block_rows
         .iter()
         .find(|b| b.get("isActive").and_then(|x| x.as_bool()).unwrap_or(false));
 
-    let (window_start, reset_at, session_usage) = match active {
+    let (window_start, reset_at, block_used, block_model_list) = match active {
         Some(b) => {
             let start = parse_ms(b, "startTime").unwrap_or(now_ms);
             let end = parse_ms(b, "endTime").unwrap_or(start + FIVE_HOURS_MS);
-            (start, end, f(b, &["totalTokens"]))
+            (start, end, block_generated(b), block_models(b))
         }
-        None => (now_ms, now_ms + FIVE_HOURS_MS, 0.0),
+        None => (now_ms, now_ms + FIVE_HOURS_MS, 0.0, Vec::new()),
     };
-    let session_remaining = (limits.session_tokens - session_usage).max(0.0);
 
+    // Blocks carry no per-model token breakdown, so attribute the window's tokens
+    // by today's Sonnet/Opus ratio, falling back to the block's model list.
+    let today_sum = sonnet_today + opus_today;
+    let (sonnet_win, opus_win) = if today_sum > 0.0 {
+        (
+            block_used * sonnet_today / today_sum,
+            block_used * opus_today / today_sum,
+        )
+    } else {
+        let has_opus = block_model_list.iter().any(|m| m.contains("opus"));
+        let has_sonnet = block_model_list.iter().any(|m| !m.contains("opus"));
+        match (has_sonnet, has_opus) {
+            (true, true) => (block_used * 0.5, block_used * 0.5),
+            (false, true) => (0.0, block_used),
+            (true, false) => (block_used, 0.0),
+            _ => (0.0, 0.0),
+        }
+    };
+
+    let win_limit = limits.window_token_limit;
+    let models = json!([
+        {
+            "name": "Claude Sonnet",
+            "modelId": "claude-sonnet-4-6",
+            "windowUsed": sonnet_win as i64,
+            "windowLimit": win_limit as i64,
+            "tokensToday": sonnet_today as i64,
+        },
+        {
+            "name": "Claude Opus",
+            "modelId": "claude-opus-4-8",
+            "windowUsed": opus_win as i64,
+            "windowLimit": win_limit as i64,
+            "tokensToday": opus_today as i64,
+        }
+    ]);
+
+    let session_usage = block_used;
+    let session_remaining = (limits.session_tokens - session_usage).max(0.0);
     let session = json!({
         "usage": session_usage as i64,
         "remaining": session_remaining as i64,
@@ -255,14 +278,34 @@ fn is_claude(name: &str) -> bool {
     name.to_lowercase().contains("claude")
 }
 
-/// Total tokens for a single model breakdown (input + output + cache).
+/// Generated tokens for a model breakdown: input + output + cache *writes*.
+/// Excludes cache *reads*, which are cheap reuse and otherwise dominate totals.
 fn model_total(m: &Value) -> f64 {
-    f(m, &["totalTokens"]).max(
-        f(m, &["inputTokens"])
-            + f(m, &["outputTokens"])
-            + f(m, &["cacheCreationTokens"])
-            + f(m, &["cacheReadTokens"]),
-    )
+    f(m, &["inputTokens"])
+        + f(m, &["outputTokens"])
+        + f(m, &["cacheCreationTokens", "cacheCreationInputTokens"])
+}
+
+/// Generated tokens for the active 5-hour block (from its `tokenCounts`).
+fn block_generated(b: &Value) -> f64 {
+    match b.get("tokenCounts") {
+        Some(tc) => {
+            f(tc, &["inputTokens"])
+                + f(tc, &["outputTokens"])
+                + f(tc, &["cacheCreationInputTokens", "cacheCreationTokens"])
+        }
+        None => 0.0,
+    }
+}
+
+/// Lower-cased Claude model names present in a block.
+fn block_models(b: &Value) -> Vec<String> {
+    arr(b, "models")
+        .iter()
+        .filter_map(|v| v.as_str())
+        .map(|s| s.to_lowercase())
+        .filter(|s| s.contains("claude"))
+        .collect()
 }
 
 /// Claude-only token total for a day. ccusage also tracks other agents/models
@@ -273,7 +316,13 @@ fn claude_tokens(day: &Value) -> f64 {
         let claude = arr(day, "modelsUsed")
             .iter()
             .any(|v| v.as_str().map(is_claude).unwrap_or(false));
-        return if claude { f(day, &["totalTokens"]) } else { 0.0 };
+        return if claude {
+            f(day, &["inputTokens"])
+                + f(day, &["outputTokens"])
+                + f(day, &["cacheCreationTokens"])
+        } else {
+            0.0
+        };
     }
     breakdowns
         .iter()

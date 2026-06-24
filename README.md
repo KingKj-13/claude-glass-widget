@@ -139,21 +139,25 @@ CLI (falling back to `npx ccusage@latest`), parses its JSON and normalizes it.
 If ccusage isn't installed, the widget shows a friendly
 **"No Claude Usage Data Available → Install ccusage"** screen with a retry.
 
-### Tuning limits
+### How tokens are counted
 
-ccusage reports tokens, not your plan's request/window ceilings, so those are
-configurable via environment variables (sensible defaults shown):
+The widget counts **generated tokens** — input + output + cache *writes* — and
+**excludes cache reads**, which are cheap reuse and otherwise dominate ccusage's
+raw totals. It also counts **Claude models only** (ccusage may track other agents
+like Gemini). The model bars show each model's usage in the current **5-hour
+window**; the "Current Session" bar shows the whole window.
+
+### Tuning budgets
+
+ccusage doesn't expose your plan's real limits, so the budgets are configurable
+(sensible defaults shown):
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `CLAUDE_DAILY_TOKEN_LIMIT` | `10000000` | "Available Today" ceiling |
-| `CLAUDE_SESSION_TOKEN_LIMIT` | `10000000` | session token ceiling |
-| `CLAUDE_SONNET_REQUEST_LIMIT` | `5000` | Sonnet request ceiling |
-| `CLAUDE_OPUS_REQUEST_LIMIT` | `500` | Opus request ceiling |
-| `CLAUDE_AVG_TOKENS_PER_REQUEST` | `1100` | used to estimate request counts |
-
-> Request counts are **estimated** from token usage because ccusage doesn't
-> expose per-message counts; tune `CLAUDE_AVG_TOKENS_PER_REQUEST` to taste.
+| `CLAUDE_SESSION_TOKEN_LIMIT` | `4000000` | total 5-hour window budget (session bar) |
+| `CLAUDE_WINDOW_TOKEN_LIMIT` | `2000000` | per-model 5-hour window budget (model bars) |
+| `CLAUDE_AVG_TOKENS_PER_REQUEST` | `1100` | estimates the request count in history tables |
 
 ---
 

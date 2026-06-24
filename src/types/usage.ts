@@ -8,18 +8,18 @@
 
 export type StatusLevel = "healthy" | "warn" | "danger";
 
-/** Per-model request / token consumption. */
+/** Per-model usage within the active 5-hour window. */
 export interface ModelUsage {
   /** Human label, e.g. "Claude Sonnet". */
   name: string;
   /** Stable model id, e.g. "claude-sonnet-4-6". */
   modelId: string;
-  /** Requests consumed in the current window. */
-  requestsUsed: number;
-  /** Request ceiling for the current window. */
-  requestsLimit: number;
-  /** Tokens consumed by this model in the current window. */
-  tokensUsed: number;
+  /** Generated tokens this model used in the active 5h window (excl. cache reads). */
+  windowUsed: number;
+  /** Configurable per-model token budget for the window. */
+  windowLimit: number;
+  /** Today's generated tokens for this model (reference). */
+  tokensToday: number;
 }
 
 /** Daily token budget figures (whole tokens). */
