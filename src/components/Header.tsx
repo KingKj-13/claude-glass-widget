@@ -4,7 +4,7 @@ import { ClaudeLogo } from "./ClaudeLogo";
 import { StatusIndicator } from "./StatusIndicator";
 import type { StatusLevel } from "@/types/usage";
 import { useUI } from "@/store/uiStore";
-import { minimizeToTray, startDrag } from "@/lib/tauri";
+import { minimizeWindow, startDrag } from "@/lib/tauri";
 
 interface HeaderProps {
   level: StatusLevel;
@@ -64,7 +64,7 @@ export function Header({ level }: HeaderProps) {
         >
           {expanded ? <Collapse /> : <Expand />}
         </IconButton>
-        <IconButton label="Minimize to tray" onClick={() => void minimizeToTray()}>
+        <IconButton label="Minimize" onClick={() => void minimizeWindow()}>
           <Minimize />
         </IconButton>
       </div>

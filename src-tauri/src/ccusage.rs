@@ -95,9 +95,18 @@ pub fn build_snapshot() -> Result<Value, String> {
     let (sonnet_today, opus_today) = model_split(&today_row);
 
     // -------- active 5-hour block -> session, reset & per-model window --------
+    // Prefer the live block; if none is active (e.g. you're rate-limited and have
+    // stopped sending messages, so there's a gap), fall back to the most recent
+    // real block so usage isn't shown as 0.
     let active = block_rows
         .iter()
-        .find(|b| b.get("isActive").and_then(|x| x.as_bool()).unwrap_or(false));
+        .find(|b| b.get("isActive").and_then(|x| x.as_bool()).unwrap_or(false))
+        .or_else(|| {
+            block_rows
+                .iter()
+                .rev()
+                .find(|b| !b.get("isGap").and_then(|x| x.as_bool()).unwrap_or(false))
+        });
 
     let (window_start, reset_at, block_used, block_model_list) = match active {
         Some(b) => {

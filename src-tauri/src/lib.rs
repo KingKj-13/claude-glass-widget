@@ -59,6 +59,7 @@ pub fn run() {
             commands::set_widget_size,
             commands::show_window,
             commands::hide_window,
+            commands::minimize_window,
             commands::quit_app,
         ])
         .run(tauri::generate_context!())

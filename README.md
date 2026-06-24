@@ -53,7 +53,8 @@ for anyone who installs it. No accounts, no sign-in, nothing leaves your compute
   highlight over an adjustable dark tint, soft animated edge glow, 32px radius,
   big ambient shadow. Stays readable over wallpaper, browsers, VS Code or
   windowed games.
-- **Frameless · transparent · always-on-top · hidden from taskbar.**
+- **Frameless · transparent · always-on-top**, with a **taskbar icon** and a
+  system-tray icon.
 - **Draggable & resizable** — drag the header to move, drag a bottom-corner grip
   to resize; remembers its position between launches, snaps to the top-right on
   first run.

@@ -80,6 +80,12 @@ pub fn hide_window<R: Runtime>(window: WebviewWindow<R>) -> Result<(), String> {
     window.hide().map_err(|e| e.to_string())
 }
 
+/// Minimize to the taskbar (restored by clicking the taskbar icon).
+#[tauri::command]
+pub fn minimize_window<R: Runtime>(window: WebviewWindow<R>) -> Result<(), String> {
+    window.minimize().map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub fn quit_app<R: Runtime>(app: AppHandle<R>, window: WebviewWindow<R>) {
     window::save_position(&window);

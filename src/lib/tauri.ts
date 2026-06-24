@@ -61,8 +61,13 @@ export async function hideWindow(): Promise<void> {
   await invoke("hide_window");
 }
 
-/** Minimize the HUD to the system tray (no taskbar entry exists). */
-export async function minimizeToTray(): Promise<void> {
+/** Minimize the HUD to the taskbar (restore by clicking the taskbar icon). */
+export async function minimizeWindow(): Promise<void> {
+  await invoke("minimize_window");
+}
+
+/** Hide the HUD entirely to the system tray (restore from the tray icon). */
+export async function hideToTray(): Promise<void> {
   await invoke("hide_window");
 }
 
