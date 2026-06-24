@@ -53,6 +53,9 @@ export function UsageSection({ used, limit }: UsageSectionProps) {
             {formatPct(r)}
           </span>
         </div>
+        <p className="mt-1.5 text-[9px] leading-tight text-white/35">
+          ≈ local estimate from ccusage · differs from Claude's official limit %
+        </p>
       </motion.div>
     </section>
   );
