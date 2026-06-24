@@ -80,12 +80,12 @@ pub fn build_snapshot() -> Result<Value, String> {
     let today = Local::now().format("%Y-%m-%d").to_string();
     let today_row = daily_rows
         .iter()
-        .find(|r| s(r, "date").as_deref() == Some(today.as_str()))
+        .find(|r| day_date(r).as_deref() == Some(today.as_str()))
         .cloned()
         .or_else(|| daily_rows.last().cloned())
         .unwrap_or_else(|| json!({}));
 
-    let used_today = f(&today_row, &["totalTokens"]);
+    let used_today = claude_tokens(&today_row);
     // "Available" is the configured daily limit (set CLAUDE_DAILY_TOKEN_LIMIT to
     // match your plan). Remaining is clamped at 0 so heavy days never go negative.
     let available_today = limits.daily_tokens;
@@ -238,6 +238,59 @@ fn arr<'a>(v: &'a Value, key: &str) -> &'a [Value] {
         .unwrap_or(&[])
 }
 
+/// ccusage 20.x names the bucket date `period`; older versions used `date`.
+fn day_date(d: &Value) -> Option<String> {
+    s(d, "period").or_else(|| s(d, "date"))
+}
+
+fn day_naive(d: &Value) -> Option<NaiveDate> {
+    day_date(d).and_then(|x| NaiveDate::parse_from_str(&x, "%Y-%m-%d").ok())
+}
+
+fn model_name(m: &Value) -> String {
+    s(m, "modelName").or_else(|| s(m, "model")).unwrap_or_default()
+}
+
+fn is_claude(name: &str) -> bool {
+    name.to_lowercase().contains("claude")
+}
+
+/// Total tokens for a single model breakdown (input + output + cache).
+fn model_total(m: &Value) -> f64 {
+    f(m, &["totalTokens"]).max(
+        f(m, &["inputTokens"])
+            + f(m, &["outputTokens"])
+            + f(m, &["cacheCreationTokens"])
+            + f(m, &["cacheReadTokens"]),
+    )
+}
+
+/// Claude-only token total for a day. ccusage also tracks other agents/models
+/// (Gemini, etc.); a Claude usage monitor must exclude those.
+fn claude_tokens(day: &Value) -> f64 {
+    let breakdowns = arr(day, "modelBreakdowns");
+    if breakdowns.is_empty() {
+        let claude = arr(day, "modelsUsed")
+            .iter()
+            .any(|v| v.as_str().map(is_claude).unwrap_or(false));
+        return if claude { f(day, &["totalTokens"]) } else { 0.0 };
+    }
+    breakdowns
+        .iter()
+        .filter(|m| is_claude(&model_name(m)))
+        .map(|m| model_total(m))
+        .sum()
+}
+
+/// Claude-only cost for a day.
+fn claude_cost(day: &Value) -> f64 {
+    arr(day, "modelBreakdowns")
+        .iter()
+        .filter(|m| is_claude(&model_name(m)))
+        .map(|m| f(m, &["cost", "totalCost"]))
+        .sum()
+}
+
 fn parse_ms(v: &Value, key: &str) -> Option<i64> {
     let raw = v.get(key)?.as_str()?;
     DateTime::parse_from_rfc3339(raw)
@@ -255,32 +308,27 @@ fn estimate_requests(tokens: f64, limits: &Limits) -> i64 {
 /// Split today's tokens into (sonnet, opus) using per-model breakdowns when
 /// present, otherwise a sensible whole-day fallback.
 fn model_split(day: &Value) -> (f64, f64) {
-    let mut sonnet = 0.0;
+    let mut sonnet = 0.0; // non-Opus Claude (Sonnet/Haiku) shown on the Sonnet bar
     let mut opus = 0.0;
     let mut matched = false;
 
     for m in arr(day, "modelBreakdowns") {
-        let name = s(m, "modelName")
-            .or_else(|| s(m, "model"))
-            .unwrap_or_default()
-            .to_lowercase();
-        let tokens = f(
-            m,
-            &["totalTokens"],
-        )
-        .max(f(m, &["inputTokens"]) + f(m, &["outputTokens"]));
+        let name = model_name(m).to_lowercase();
+        if !name.contains("claude") {
+            continue; // ignore Gemini/other agents
+        }
+        let tokens = model_total(m);
         if name.contains("opus") {
             opus += tokens;
-            matched = true;
-        } else if name.contains("sonnet") || name.contains("haiku") {
+        } else {
             sonnet += tokens;
-            matched = true;
         }
+        matched = true;
     }
 
     if !matched {
         // No per-model data: assume the common ~80/20 Sonnet/Opus split.
-        let total = f(day, &["totalTokens"]);
+        let total = claude_tokens(day);
         sonnet = total * 0.82;
         opus = total * 0.18;
     }
@@ -338,11 +386,10 @@ fn daily_chart(daily: &[Value]) -> Value {
     let take = daily.iter().rev().take(7).rev();
     let points: Vec<Value> = take
         .map(|d| {
-            let label = s(d, "date")
-                .and_then(|ds| NaiveDate::parse_from_str(&ds, "%Y-%m-%d").ok())
+            let label = day_naive(d)
                 .map(|nd| nd.format("%a").to_string())
-                .unwrap_or_else(|| s(d, "date").unwrap_or_default());
-            json!({ "label": label, "value": f(d, &["totalTokens"]) as i64 })
+                .unwrap_or_else(|| day_date(d).unwrap_or_default());
+            json!({ "label": label, "value": claude_tokens(d) as i64 })
         })
         .collect();
     Value::Array(points)
@@ -388,14 +435,15 @@ fn daily_history(daily: &[Value], limits: &Limits) -> Value {
     let rows: Vec<Value> = daily
         .iter()
         .rev()
+        .filter(|d| claude_tokens(d) > 0.0)
         .take(14)
         .map(|d| {
-            let tokens = f(d, &["totalTokens"]);
+            let tokens = claude_tokens(d);
             json!({
-                "period": s(d, "date").unwrap_or_default(),
+                "period": day_date(d).unwrap_or_default(),
                 "tokens": tokens as i64,
                 "requests": estimate_requests(tokens, limits),
-                "cost": round2(f(d, &["totalCost", "cost"])),
+                "cost": round2(claude_cost(d)),
             })
         })
         .collect();
@@ -487,8 +535,8 @@ fn session_history(blocks: &[Value], limits: &Limits) -> Value {
 fn group_by(daily: &[Value], key: impl Fn(&NaiveDate) -> String) -> std::collections::HashMap<String, f64> {
     let mut map: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
     for d in daily {
-        if let Some(nd) = s(d, "date").and_then(|ds| NaiveDate::parse_from_str(&ds, "%Y-%m-%d").ok()) {
-            *map.entry(key(&nd)).or_insert(0.0) += f(d, &["totalTokens"]);
+        if let Some(nd) = day_naive(d) {
+            *map.entry(key(&nd)).or_insert(0.0) += claude_tokens(d);
         }
     }
     map
@@ -500,10 +548,10 @@ fn group_with_cost(
 ) -> Vec<(String, (f64, f64))> {
     let mut map: std::collections::HashMap<String, (f64, f64)> = std::collections::HashMap::new();
     for d in daily {
-        if let Some(nd) = s(d, "date").and_then(|ds| NaiveDate::parse_from_str(&ds, "%Y-%m-%d").ok()) {
+        if let Some(nd) = day_naive(d) {
             let e = map.entry(key(&nd)).or_insert((0.0, 0.0));
-            e.0 += f(d, &["totalTokens"]);
-            e.1 += f(d, &["totalCost", "cost"]);
+            e.0 += claude_tokens(d);
+            e.1 += claude_cost(d);
         }
     }
     map.into_iter().collect()

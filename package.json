@@ -1,7 +1,7 @@
 {
   "name": "claude-glass-widget",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "description": "A premium floating glass desktop HUD that keeps Claude AI usage permanently on your desktop.",
   "author": "Claude Glass Widget",
